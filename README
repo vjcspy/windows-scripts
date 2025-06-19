@@ -1,2 +1,30 @@
 # Windows Scripts
 > Useful scripts when developing in Windows environment
+
+## Prerequisite
+
+- Install chocolately: https://docs.chocolatey.org/en-us/choco/setup/#more-install-options
+
+## Scripts
+
+### JDK Manager (jdk-manager.ps1)
+
+A PowerShell script to manage JDK installations using Chocolatey.
+
+#### Features:
+- Install JDK versions (currently supports Amazon Corretto 17 and 21)
+- Update installed JDKs
+- Switch between JDK versions (sets JAVA_HOME and updates PATH)
+- Check for JDK updates
+
+#### Usage:
+1. Run the script in PowerShell with administrator privileges:
+   ```
+   powershell -ExecutionPolicy Bypass -File jdk-manager.ps1
+   ```
+2. Follow the menu options to manage your JDK installations
+
+#### Notes:
+- The script automatically detects JDK installation paths using Chocolatey
+- If Chocolatey information is not available, it falls back to searching common installation directories
+- You need to restart your terminal after switching JDK versions for the changes to take effect

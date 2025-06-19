@@ -121,19 +121,42 @@ function Update-JDK($pkgName) {
 }
 
 function Get-JDKFolder($version) {
-    $basePath = "C:\Program Files\Amazon Corretto"
-    $temurinPath = "C:\Program Files\Eclipse Adoptium"
-    if ($version -eq "17") {
-        if (Test-Path $basePath) {
+    # Get the package name for the specified version
+    if (-not $jdks.ContainsKey($version)) {
+        Write-Error "Version $version is not supported."
+        return $null
+    }
+
+    $pkgName = $jdks[$version]
+
+    # Check if the package is installed using our existing function
+    if (-not (Is-JDKInstalled $pkgName)) {
+        return $null
+    }
+
+    # Try to get installation information from Chocolatey
+    try {
+        $chocoInfo = choco info $pkgName --local-only
+
+        # First try to extract the installation path from choco info
+        $installPath = $chocoInfo | Select-String -Pattern "InstallLocation: '([^']+)'" | ForEach-Object { $_.Matches.Groups[1].Value }
+
+        if ($installPath -and (Test-Path $installPath)) {
+            return $installPath
+        }
+
+        # If we couldn't get the path from choco info, fall back to the old method
+        $basePath = "C:\Program Files\Amazon Corretto"
+        $temurinPath = "C:\Program Files\Eclipse Adoptium"
+
+        if ($version -eq "17" -and (Test-Path $basePath)) {
             $folders = Get-ChildItem -Path $basePath -Directory |
                 Where-Object { $_.Name -match "^jdk$version" } |
                 Sort-Object Name -Descending
             if ($folders.Count -gt 0) {
                 return $folders[0].FullName
             }
-        }
-    } elseif ($version -eq "21") {
-        if (Test-Path $temurinPath) {
+        } elseif ($version -eq "21" -and (Test-Path $temurinPath)) {
             $folders = Get-ChildItem -Path $temurinPath -Directory |
                 Where-Object { $_.Name -match "^jdk-$version" } |
                 Sort-Object Name -Descending
@@ -141,7 +164,30 @@ function Get-JDKFolder($version) {
                 return $folders[0].FullName
             }
         }
+
+        # If we still can't find it, try some common paths for JDKs
+        $commonPaths = @(
+            "C:\Program Files\Amazon Corretto",
+            "C:\Program Files\Eclipse Adoptium",
+            "C:\Program Files\Java",
+            "C:\Program Files (x86)\Java"
+        )
+
+        foreach ($path in $commonPaths) {
+            if (Test-Path $path) {
+                $folders = Get-ChildItem -Path $path -Directory -Recurse -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -match "jdk.*$version" -or $_.Name -match "jdk-$version" } |
+                    Sort-Object Name -Descending
+                if ($folders.Count -gt 0) {
+                    return $folders[0].FullName
+                }
+            }
+        }
     }
+    catch {
+        Write-Error "Error getting installation path for ${pkgName}. Please check if the package is installed correctly."
+    }
+
     return $null
 }
 
